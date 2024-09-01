@@ -11,7 +11,7 @@ def start(update: Update, context: CallbackContext):
     '''
 
     msg = 'Hello, I am here to help you find cool Data Science Competitions!'
-    msg += '\n\nYou can control me using these commands:\n\n'
+    msg += '\n\nYou can control me by using these commands:\n\n'
     msg += '/kaggle - List 5 Kaggle competitions and their information'
 
     update.message.reply_text(msg)
@@ -22,7 +22,7 @@ def help(update: Update, context: CallbackContext):
     '''
 
     msg = 'Hello, I am here to help you find cool Data Science Competitions!'
-    msg += '\n\nYou can control me using these commands:\n\n'
+    msg += '\n\nYou can control me by using these commands:\n\n'
     msg += '/kaggle - List 5 Kaggle competitions and their information'
 
     update.message.reply_text(msg)
@@ -46,7 +46,7 @@ def create_competition_print(c, n_comp, total_comp):
     response += '\nMax Team Size: ' + str(c.maxTeamSize) + '\nDeadline: ' + str(c.deadline) + '\n' + c.url
 
     if n_comp+1 < total_comp:
-        response = response + '\n\n--------------------------------------------------------------\n\n'
+        response = response + '\n\n----------------------------------------------------\n\n'
         
     return response
 
