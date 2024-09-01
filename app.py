@@ -42,11 +42,11 @@ def create_competition_print(c, n_comp, total_comp):
     Formats a string with the competition information. Used to get a more beautiful Telegram message.
     '''
     
-    response = 'Title: ' + c.title + '\nDescription: ' + c.description + '\nCategory: ' + c.category + '\nPrize: ' + c.reward
+    response = 'Title: ' + c.title + '\nDescription: ' + c.description + '\nCategory: ' + c.category + '\Reward: ' + c.reward
     response += '\nMax Team Size: ' + str(c.maxTeamSize) + '\nDeadline: ' + str(c.deadline) + '\n' + c.url
 
     if n_comp+1 < total_comp:
-        response = response + '\n\n----------------------------------------------------------------------------------------\n\n'
+        response = response + '\n\n--------------------------------------------------------------\n\n'
         
     return response
 
@@ -65,30 +65,26 @@ def kaggle(update: Update, context: CallbackContext):
 
     update.message.reply_text(response, disable_web_page_preview=True)
 
-def main():
-    # Loading configuration file to get the key of our Telegram bot.
-    with open('config.json', 'r') as config_file:
-        config = json.load(config_file)
-        TOKEN = config['key']
+# Loading configuration file to get the key of our Telegram bot.
+with open('config.json', 'r') as config_file:
+    config = json.load(config_file)
+    TOKEN = config['key']
 
-    # Linking this code to our Telegram bot.
-    updater = Updater(TOKEN)
-    dp = updater.dispatcher
-    print('Bot linked!')
+# Linking this code to our Telegram bot.
+updater = Updater(TOKEN)
+dp = updater.dispatcher
+print('Bot linked!')
 
-    # Accessing Kaggle API.
-    api = KaggleApi()
-    api.authenticate()
-    print('Kaggle API accessed!')
+# Accessing Kaggle API.
+api = KaggleApi()
+api.authenticate()
+print('Kaggle API accessed!')
 
-    # Adding commands to the bot.
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("help", help))
-    dp.add_handler(CommandHandler("kaggle", kaggle))
-    print('Functionalities linked!')
+# Adding commands to the bot.
+dp.add_handler(CommandHandler("start", start))
+dp.add_handler(CommandHandler("help", help))
+dp.add_handler(CommandHandler("kaggle", kaggle))
+print('Functionalities linked!')
 
-    updater.start_polling()
-    updater.idle()
-
-if __name__ == '__main__':
-    main()
+updater.start_polling()
+updater.idle()
