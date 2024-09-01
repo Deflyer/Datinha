@@ -42,7 +42,7 @@ def create_competition_print(c, n_comp, total_comp):
     Formats a string with the competition information. Used to get a more beautiful Telegram message.
     '''
     
-    response = 'Title: ' + c.title + '\nDescription: ' + c.description + '\nCategory: ' + c.category + '\Reward: ' + c.reward
+    response = 'Title: ' + c.title + '\nDescription: ' + c.description + '\nCategory: ' + c.category + '\nReward: ' + c.reward
     response += '\nMax Team Size: ' + str(c.maxTeamSize) + '\nDeadline: ' + str(c.deadline) + '\n' + c.url
 
     if n_comp+1 < total_comp:
