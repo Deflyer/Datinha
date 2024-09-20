@@ -3,6 +3,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackContext, CallbackQueryHandler
 import sys
 import os
+import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -15,8 +16,10 @@ from kaggle.api.kaggle_api_extended import KaggleApi
 PAGE_SIZE = 5
 competitions = []  # Armazena todas as competições
 competitions_kaggle = [] 
-current_page = 0  # Página atual
-
+# Accessing Kaggle API.
+api = KaggleApi()
+api.authenticate()
+print('Kaggle API accessed!')
 def start(update: Update, context: CallbackContext):
     '''
     Core Telegram command to a bot (same as help()).
@@ -102,43 +105,50 @@ def get_competitions_kaggle(group = "general", category = "all", sort_by="latest
     except ApiException as e:
         print("Exception when calling KaggleApi->competitions_list: %s\n" % e)
 
-def create_competition_print_kaggle(c):
-    '''
-    Formats a string with the competition information. Used to get a more beautiful Telegram message.
-    '''
-    
-    response = 'Title: ' + c.title + '\nDescription: ' + c.description + '\nCategory: ' + c.category + '\nReward: ' + c.reward
-    response += '\nMax Team Size: ' + str(c.maxTeamSize) + '\nDeadline: ' + str(c.deadline) + '\n' + c.url
-        
-    return response
-    
-
+# Função para exibir competições
 def kaggle_func(update: Update, context: CallbackContext):
-    '''
-    Telegram command to list 5 Kaggle competitions and their information.
-    '''
-    global current_page
-    current_page = 0
-    start_index = current_page * PAGE_SIZE
+    if not update.callback_query:
+        # Se foi chamada via comando, zera a página
+        context.user_data['current_page_k'] = 0
     competitions_kaggle = get_competitions_kaggle()
-    end_index = min(start_index + PAGE_SIZE, len(competitions_kaggle))
+
+    # Pega a página atual ou inicializa
+    current_page = context.user_data.get('current_page_k', 0)
+    print(current_page)
+
+    # Limita o current page para não sair dos limites
+    tam_comp = len(competitions_kaggle)
+    if current_page > tam_comp / PAGE_SIZE:
+        current_page = tam_comp / PAGE_SIZE
+        context.user_data['current_page_k'] = current_page
+
+    if current_page < 0:
+        current_page = 0
+        context.user_data['current_page_k'] = 0
+    start_index = current_page * PAGE_SIZE
+    end_index = min(start_index + PAGE_SIZE, tam_comp)
     
     message = ''
-    for comp in competitions_kaggle[start_index:end_index]:
-        message += create_competition_print_kaggle(comp) + '\n\n'
+    for c in competitions_kaggle[start_index:end_index]:
+            message += 'Title: ' + c.title + '\nDescription: ' + c.description + '\nCategory: ' + c.category + '\nReward: ' + c.reward
+            message += '\nMax Team Size: ' + str(c.maxTeamSize) + '\nDeadline: ' + str(c.deadline) + '\n' + c.url
+            message += '\n----------------------------------------------------\n\n'
+
     
-    message += '----------------------------------------------------\n\n'
+    
     keyboard = []
     if start_index > 0:
-        keyboard.append([InlineKeyboardButton("⬅️ Previous", callback_data=f'prev_{current_page}')])
+        keyboard.append([InlineKeyboardButton("⬅️ Previous", callback_data=f'kaggle_prev_{current_page}')])
     if end_index < len(competitions_kaggle):
-        keyboard.append([InlineKeyboardButton("➡️ Next", callback_data=f'next_{current_page}')])
+        keyboard.append([InlineKeyboardButton("➡️ Next", callback_data=f'kaggle_next_{current_page}')])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
+
     if update.callback_query:
         update.callback_query.message.edit_text(message, disable_web_page_preview=True, reply_markup=reply_markup)
     else:
         update.message.reply_text(message, disable_web_page_preview=True, reply_markup=reply_markup)
+
 
 def create_competition_print_all(c):
     '''
@@ -150,24 +160,37 @@ def create_competition_print_all(c):
         
     return response
 
-def send_competitions(update: Update, page: int):
-    global competitions
-    start_index = page * PAGE_SIZE
+def send_competitions(update: Update, context: CallbackContext):
+    if not update.callback_query:
+        # Se foi chamada via comando, zera a página
+        context.user_data['current_page_a'] = 0
+    current_page = context.user_data.get('current_page_a', 0)
+    start_index = current_page * PAGE_SIZE
 
     competitions = get_competitions()
+
+    # Limita o current page para não sair dos limites
+    tam_comp = len(competitions)
+    if current_page > tam_comp / PAGE_SIZE:
+        current_page = tam_comp / PAGE_SIZE
+        context.user_data['current_page_a'] = current_page
+
+    if current_page < 0:
+        current_page = 0
+        context.user_data['current_page_a'] = 0
 
     end_index = min(start_index + PAGE_SIZE, len(competitions))
     
     message = ''
     for comp in competitions[start_index:end_index]:
-        message += create_competition_print_all(comp) + '\n\n'
+        message += create_competition_print_all(comp) + '\n'
+        message += '----------------------------------------------------\n\n'
     
-    message += '----------------------------------------------------\n\n'
     keyboard = []
     if start_index > 0:
-        keyboard.append([InlineKeyboardButton("⬅️ Previous", callback_data=f'prev_{page}')])
+        keyboard.append([InlineKeyboardButton("⬅️ Previous", callback_data=f'all_prev_{current_page}')])
     if end_index < len(competitions):
-        keyboard.append([InlineKeyboardButton("➡️ Next", callback_data=f'next_{page}')])
+        keyboard.append([InlineKeyboardButton("➡️ Next", callback_data=f'all_next_{current_page}')])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     if update.callback_query:
@@ -179,54 +202,80 @@ def upcoming(update: Update, context: CallbackContext):
     '''
     Telegram command to list all upcoming Kaggle competitions with pagination.
     '''
-    global competitions, current_page
+    global competitions
     competitions = get_competitions()
-    current_page = 0
 
-    send_competitions(update, current_page)
+    send_competitions(update, context)
 
+# Função para lidar com a navegação
 def button(update: Update, context: CallbackContext):
-    '''
-    Navigate through the competitions with emotes buttons peguei do chat, nao funciona ainda
-    '''
-    global current_page
     query = update.callback_query
-    query.answer()
-    
+
+    # Armazenar o tempo da última interação do usuário
+    last_interaction = context.user_data.get('last_interaction', 0)
+    print(last_interaction)
+    current_time = time.time()
+
+    # Define um cooldown de 1 segundo
+    cooldown = 1  
+    if current_time - last_interaction < cooldown:
+        query.answer(text="Aguarde um momento antes de tentar novamente.")
+        return
+    context.user_data['last_interaction'] = current_time
+
     data = query.data.split('_')
-    direction = data[0]
-    page = int(data[1])
+    print(data)
+    type = data[0]
+    direction = data[1]
+    current_page = int(data[2])
+
+    # Atualiza a página
+    if type == "all":
+        if direction == 'prev':
+            current_page = max(current_page - 1, 0)
+        elif direction == 'next':
+            current_page += 1  # Apenas incrementa aqui
     
-    if direction == 'prev':
-        current_page = max(page - 1, 0)
-    elif direction == 'next':
-        current_page = min(page + 1, len(competitions) // PAGE_SIZE)
+        context.user_data['current_page_a'] = current_page
+
+        # Envia as competições da nova página
+        send_competitions(update, context)
+    if type == "kaggle":
+        if direction == 'prev':
+            current_page = max(current_page - 1, 0)
+        elif direction == 'next':
+            current_page += 1  # Apenas incrementa aqui
     
-    send_competitions(update, current_page)
+        context.user_data['current_page_k'] = current_page
 
-# Loading configuration file to get the key of our Telegram bot.
-with open('config.json', 'r') as config_file:
-    config = json.load(config_file)
-    TOKEN = config['key']
+        # Envia as competições da nova página
+        kaggle_func(update, context)
 
-# Linking this code to our Telegram bot.
-updater = Updater(TOKEN)
-dp = updater.dispatcher
-print('Bot linked!')
-dp.add_handler(CallbackQueryHandler(button))
+    query.answer()
 
-# Accessing Kaggle API.
-api = KaggleApi()
-api.authenticate()
-print('Kaggle API accessed!')
+# Configuração do bot
+def main():
+    # Loading configuration file to get the key of our Telegram bot.
+    with open('config.json', 'r') as config_file:
+        config = json.load(config_file)
+        TOKEN = config['key']
 
-# Adding commands to the bot.
-dp.add_handler(CommandHandler("start", start))
-dp.add_handler(CommandHandler("help", help))
-dp.add_handler(CommandHandler("kaggle", kaggle_func))
-dp.add_handler(CommandHandler("upcoming", upcoming))
-dp.add_handler(CallbackQueryHandler(button))
-print('Functionalities linked!')
+    # Linking this code to our Telegram bot.
+    updater = Updater(TOKEN)
+    dp = updater.dispatcher
+    print('Bot linked!')
+    dp.add_handler(CallbackQueryHandler(button))
 
-updater.start_polling()
-updater.idle()
+    # Adding commands to the bot.
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("help", help))
+    dp.add_handler(CommandHandler("kaggle", kaggle_func))
+    dp.add_handler(CommandHandler("upcoming", upcoming))
+    dp.add_handler(CallbackQueryHandler(button))
+    print('Functionalities linked!')
+
+    updater.start_polling()
+    updater.idle()
+    
+if __name__ == '__main__':
+    main()
