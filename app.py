@@ -114,7 +114,6 @@ def kaggle_func(update: Update, context: CallbackContext):
 
     # Pega a página atual ou inicializa
     current_page = context.user_data.get('current_page_k', 0)
-    print(current_page)
 
     # Limita o current page para não sair dos limites
     tam_comp = len(competitions_kaggle)
@@ -213,7 +212,6 @@ def button(update: Update, context: CallbackContext):
 
     # Armazenar o tempo da última interação do usuário
     last_interaction = context.user_data.get('last_interaction', 0)
-    print(last_interaction)
     current_time = time.time()
 
     # Define um cooldown de 1 segundo
@@ -224,7 +222,6 @@ def button(update: Update, context: CallbackContext):
     context.user_data['last_interaction'] = current_time
 
     data = query.data.split('_')
-    print(data)
     type = data[0]
     direction = data[1]
     current_page = int(data[2])
